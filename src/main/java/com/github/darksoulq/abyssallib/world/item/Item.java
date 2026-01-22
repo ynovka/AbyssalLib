@@ -18,6 +18,7 @@ import io.papermc.paper.datacomponent.DataComponentType;
 import io.papermc.paper.datacomponent.DataComponentTypes;
 import io.papermc.paper.datacomponent.item.ItemLore;
 import io.papermc.paper.datacomponent.item.TooltipDisplay;
+import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
@@ -36,7 +37,8 @@ public class Item implements Cloneable {
     private Identifier id;
     private ItemStack stack;
     private ComponentMap componentMap;
-    public Tooltip tooltip = new Tooltip();
+    private LocalizedName nameDefinition;
+    private LocalizedTooltip tooltipDefinition;
 
     @ApiStatus.Internal
     public Item(ItemStack stack) {
@@ -48,27 +50,55 @@ public class Item implements Cloneable {
         this.id = id;
         stack = ItemStack.of(base);
         Integer size = stack.getData(DataComponentTypes.MAX_STACK_SIZE);
+        Key model = stack.getData(DataComponentTypes.ITEM_MODEL);
         componentMap = new ComponentMap(this);
         for (Identifier cId : componentMap.getVanillaIds()) {
             componentMap.removeData(cId);
         }
         if (size != null) setData(new MaxStackSize(size));
-        setData(new ItemName(Component.translatable("item." + id.getNamespace() + "." + id.getPath())));
-        setData(new ItemModel(id.asNamespacedKey()));
+        if (model != null) setData(new ItemModel(model));
+        else setData(new ItemModel(id.asNamespacedKey()));
         setData(new CustomMarker(id));
+        this.nameDefinition = LocalizedName.builder()
+                .setDefault(Component.text(id.toString()))
+                .build();
+        this.tooltipDefinition = createTooltip();
+        this.applyTooltipToComponents(this.tooltipDefinition, null);
+        this.componentMap.applyData();
     }
 
-    public void createTooltip(Tooltip tooltip) {}
-    public void createTooltip(Tooltip tooltip, @Nullable Player player) {
-        createTooltip(tooltip);
+    public void setNameDefinition(LocalizedName nameDefinition) {
+        this.nameDefinition = nameDefinition;
     }
-    public void updateTooltip() {
-        setData(new Lore(ItemLore.lore(tooltip.lines)));
+
+    /**
+     * Users should override this to return a built LocalizedTooltip.
+     * @return The configured tooltip builder result.
+     */
+    public LocalizedTooltip createTooltip() {
+        return LocalizedTooltip.builder().build(); // Return empty default
+    }
+
+    /**
+     * Applies the resolved Tooltip data (lore, flags) to the Item's ComponentMap.
+     * This is internal and used during getStack().
+     */
+    private void applyTooltipToComponents(LocalizedTooltip tooltip, @Nullable Player player) {
+        // 1. Resolve and set Lore
+        setData(new Lore(ItemLore.lore(tooltip.resolveLines(player))));
+
+        // 2. Set Display flags
         setData(new DisplayTooltip(TooltipDisplay.tooltipDisplay()
-            .hideTooltip(tooltip.hide)
-            .hiddenComponents(tooltip.hiddenComponents).build()));
-        if (tooltip.style != null) setData(new TooltipStyle(tooltip.style.asNamespacedKey()));
-        else unsetData(TooltipStyle.class);
+                .hideTooltip(tooltip.isHidden())
+                .hiddenComponents(tooltip.getHiddenComponents())
+                .build()));
+
+        // 3. Set Style
+        if (tooltip.getStyle() != null) {
+            setData(new TooltipStyle(tooltip.getStyle().asNamespacedKey()));
+        } else {
+            unsetData(TooltipStyle.class);
+        }
     }
 
     public void setData(DataComponent<?> component) {
@@ -110,8 +140,8 @@ public class Item implements Cloneable {
     }
     public void setTag(ItemTag tag) {
         tag.add(ItemPredicate.builder()
-            .value(new CustomMarker(id))
-            .build());
+                .value(new CustomMarker(id))
+                .build());
     }
 
     public ActionResult postMine(LivingEntity source, Block target) {
@@ -148,14 +178,17 @@ public class Item implements Cloneable {
     public Identifier getId() {
         return id;
     }
-    public ItemStack getStack() {
-        return stack;
-    }
+    public ItemStack getStack() { return stack; }
     public ItemStack getStack(@Nullable Player player) {
         Item contextItem = this.clone();
-        contextItem.tooltip.lines.clear();
-        contextItem.createTooltip(contextItem.tooltip, player);
-        contextItem.updateTooltip();
+
+        Component resolvedName = nameDefinition.resolve(player);
+        contextItem.stack.setData(DataComponentTypes.ITEM_NAME, resolvedName);
+
+        contextItem.tooltipDefinition = contextItem.createTooltip();
+        contextItem.applyTooltipToComponents(contextItem.tooltipDefinition, player);
+
+        contextItem.getComponentMap().applyData();
         return contextItem.getStack();
     }
     public ComponentMap getComponentMap() {
@@ -195,11 +228,8 @@ public class Item implements Cloneable {
             item.id = this.id;
             item.stack = this.stack.clone();
             item.componentMap = new ComponentMap(item);
-            item.tooltip = new Tooltip();
-            item.tooltip.hide = this.tooltip.hide;
-            item.tooltip.style = this.tooltip.style;
-            item.tooltip.lines = new ArrayList<>(this.tooltip.lines);
-            item.tooltip.hiddenComponents = new HashSet<>(this.tooltip.hiddenComponents);
+            item.nameDefinition = this.nameDefinition;
+            item.tooltipDefinition = this.tooltipDefinition;
             return item;
         } catch (CloneNotSupportedException e) {
             throw new RuntimeException(e);
@@ -213,35 +243,5 @@ public class Item implements Cloneable {
     @Override
     public int hashCode() {
         return Objects.hashCode(id);
-    }
-
-    public static class Tooltip {
-        private boolean hide;
-        public List<Component> lines = new ArrayList<>();
-        public Set<DataComponentType> hiddenComponents = new HashSet<>();
-        private Identifier style = null;
-
-        public void setVisible(boolean v) {
-            this.hide = !v;
-        }
-        public void withHidden(DataComponentType type) {
-            this.hiddenComponents.add(type);
-        }
-        public void addLine(Component component) {
-            lines.add(component);
-        }
-        public void withStyle(Identifier style) {
-            this.style = style;
-        }
-
-        public Identifier getStyle() {
-            return this.style;
-        }
-        public boolean isVisible() {
-            return hide;
-        }
-        public Component getLine(int index) {
-            return lines.get(index);
-        }
     }
 }
