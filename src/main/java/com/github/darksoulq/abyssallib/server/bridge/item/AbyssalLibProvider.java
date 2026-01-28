@@ -44,7 +44,7 @@ public class AbyssalLibProvider extends ItemProvider {
     public ItemStack get(Identifier id) {
         Item item = Registries.ITEMS.get(id.toString());
         if (item == null) return null;
-        return item.getStack().clone();
+        return item.getStack(null).clone();
     }
 
     @Override

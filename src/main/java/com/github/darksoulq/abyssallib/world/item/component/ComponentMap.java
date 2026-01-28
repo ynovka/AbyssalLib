@@ -49,19 +49,19 @@ public class ComponentMap {
     }
 
     public void loadItem() {
-        if (item == null || item.getStack() == null) return;
+        if (item == null || item.getRawStack() == null) return;
 
-        for (DataComponentType type : item.getStack().getDataTypes()) {
+        for (DataComponentType type : item.getRawStack().getDataTypes()) {
             Class<? extends DataComponent<?>> cls = Registries.DATA_COMPONENTS.get(type.key().toString());
             if (cls == null) continue;
 
-            if (type instanceof DataComponentType.Valued<?> vl && item.getStack().getData(vl) == null) {
+            if (type instanceof DataComponentType.Valued<?> vl && item.getRawStack().getData(vl) == null) {
                 continue;
             }
 
             Try.of(() -> {
                 if (type instanceof DataComponentType.Valued<?> vl) {
-                    Object val = item.getStack().getData(vl);
+                    Object val = item.getRawStack().getData(vl);
                     Constructor<?> cons = Arrays.stream(cls.getConstructors())
                         .filter(c -> c.getParameterCount() == 1 &&
                             isAssignable(c.getParameterTypes()[0], val.getClass()))
@@ -96,7 +96,7 @@ public class ComponentMap {
     public void removeData(Identifier id) {
         if (vanillaComponents.containsKey(id)) {
             Vanilla v = vanillaComponents.remove(id);
-            if (item != null) v.remove(item.getStack());
+            if (item != null) v.remove(item.getRawStack());
         } else if (components.containsKey(id)) {
             removeComponent(components.get(id));
         }
@@ -109,7 +109,7 @@ public class ComponentMap {
         for (Vanilla v : vanillaComponents.values()) {
             if (clazz.isInstance(v)) {
                 vanillaComponents.remove(((DataComponent<?>) v).getId());
-                if (item != null) v.remove(item.getStack());
+                if (item != null) v.remove(item.getRawStack());
             }
         }
     }
@@ -149,7 +149,7 @@ public class ComponentMap {
         }
         if (item != null) {
             for (Vanilla v : vanillaComponents.values()) {
-                v.apply(item.getStack());
+                v.apply(item.getRawStack());
             }
         }
         rootTag.put("CustomComponents", data.toVanilla());

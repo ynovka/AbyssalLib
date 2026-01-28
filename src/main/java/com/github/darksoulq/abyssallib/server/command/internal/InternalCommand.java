@@ -215,7 +215,7 @@ public class InternalCommand {
             return 0;
         }
 
-        player.getInventory().addItem(item.getStack().asQuantity(amount));
+        player.getInventory().addItem(item.getStack(player).asQuantity(amount));
         return Command.SUCCESS;
     }
 

@@ -9,6 +9,7 @@ import com.github.darksoulq.abyssallib.server.event.context.item.AnvilContext;
 import com.github.darksoulq.abyssallib.server.event.context.item.UseContext;
 import com.github.darksoulq.abyssallib.server.event.custom.server.PacketSendEvent;
 import com.github.darksoulq.abyssallib.world.item.Item;
+import com.github.darksoulq.abyssallib.world.item.PacketItemTranslator;
 import com.github.darksoulq.abyssallib.world.item.component.builtin.EntitySpawner;
 import com.github.darksoulq.abyssallib.world.item.internal.ItemTicker;
 import io.papermc.paper.datacomponent.DataComponentTypes;
@@ -66,13 +67,22 @@ public class ItemEvents {
         RANGED_TYPES.add(type);
     }
 
-
     @SubscribeEvent(ignoreCancelled = false)
     public void onInventoryUpdate(PacketSendEvent event) {
-        if (event.getPacket() instanceof ClientboundContainerSetSlotPacket
-            || event.getPacket() instanceof ClientboundContainerSetContentPacket
-            || event.getPacket() instanceof ClientboundSetPlayerInventoryPacket
-            || event.getPlayer() instanceof ClientboundContainerSetDataPacket) return;
+        Object packet = event.getPacket();
+
+        if (packet instanceof ClientboundContainerSetContentPacket p) {
+            event.setPacket(PacketItemTranslator.translateWindowItems(p, event.getPlayer()));
+        }
+        else if (packet instanceof ClientboundContainerSetSlotPacket p) {
+            event.setPacket(PacketItemTranslator.translateSetSlot(p, event.getPlayer()));
+        }
+
+        if (packet instanceof ClientboundContainerSetSlotPacket
+                || packet instanceof ClientboundContainerSetContentPacket
+                || packet instanceof ClientboundSetPlayerInventoryPacket
+                || packet instanceof ClientboundContainerSetDataPacket) return;
+
         ItemTicker.update(event.getPlayer());
     }
 

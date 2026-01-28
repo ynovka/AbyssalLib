@@ -49,7 +49,7 @@ public class ItemMenu {
             Item icon = getPluginIcon(plugin, count - 1);
             if (icon == null) continue;
 
-            elements.add(GuiButton.of(icon.getStack(), (view, click) -> {
+            elements.add(GuiButton.of(icon.getStack(player), (view, click) -> {
                 open(player, plugin);
                 GuiManager.openViews.remove(view.getInventoryView());
             }));
@@ -69,9 +69,9 @@ public class ItemMenu {
         for (String str : Registries.ITEMS.getAll().keySet()) {
             if (!str.startsWith(namespace)) continue;
             if (str.endsWith("plugin_icon")) continue;
-            elements.add(GuiButton.of(Registries.ITEMS.get(str).getStack().asOne(), (view, click) -> {
+            elements.add(GuiButton.of(Registries.ITEMS.get(str).getStack(player).asOne(), (view, click) -> {
                 if (!player.hasPermission(PermissionConstants.Items.GIVE)) return;
-                player.give(Registries.ITEMS.get(str).getStack().asOne());
+                player.give(Registries.ITEMS.get(str).getStack(player).asOne());
             }));
         }
 
@@ -83,8 +83,8 @@ public class ItemMenu {
         PaginatedElements elem = new PaginatedElements(elements, positions.stream().mapToInt(SlotPosition::index).toArray(), GuiView.Segment.TOP);
 
         gui.addLayer(elem);
-        gui.set(SlotPosition.top(45), GuiButton.of(Items.BACKWARD.get().getStack(), (view, click) -> elem.prev(view)));
-        gui.set(SlotPosition.top(53), GuiButton.of(Items.FORWARD.get().getStack(), (view, click) -> elem.next(view)));
+        gui.set(SlotPosition.top(45), GuiButton.of(Items.BACKWARD.get().getStack(player), (view, click) -> elem.prev(view)));
+        gui.set(SlotPosition.top(53), GuiButton.of(Items.FORWARD.get().getStack(player), (view, click) -> elem.next(view)));
 
         GuiManager.open(player, gui.build());
     }

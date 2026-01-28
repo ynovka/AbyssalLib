@@ -346,7 +346,7 @@ public class BlockEvents {
             if (props.requireSilkTouch && silkTouch) {
                 Item blockItem = CustomBlock.asItem(block);
                 if (blockItem != null) {
-                    world.dropItemNaturally(loc, blockItem.clone().getStack().clone());
+                    world.dropItemNaturally(loc, blockItem.clone().getStack(null).clone());
                 }
                 return;
             }
@@ -354,7 +354,7 @@ public class BlockEvents {
             if (!props.requireSilkTouch) {
                 Item blockItem = CustomBlock.asItem(block);
                 if (blockItem != null) {
-                    world.dropItemNaturally(loc, blockItem.clone().getStack().clone());
+                    world.dropItemNaturally(loc, blockItem.clone().getStack(null).clone());
                 }
             }
         }

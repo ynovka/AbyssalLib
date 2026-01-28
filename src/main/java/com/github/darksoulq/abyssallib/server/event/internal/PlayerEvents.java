@@ -1,5 +1,6 @@
 package com.github.darksoulq.abyssallib.server.event.internal;
 
+import com.github.darksoulq.abyssallib.AbyssalLib;
 import com.github.darksoulq.abyssallib.server.event.EventBus;
 import com.github.darksoulq.abyssallib.server.event.SubscribeEvent;
 import com.github.darksoulq.abyssallib.server.event.custom.block.BlockInteractionEvent;
@@ -9,8 +10,11 @@ import com.github.darksoulq.abyssallib.world.data.statistic.PlayerStatistics;
 import com.github.darksoulq.abyssallib.world.entity.data.EntityAttributes;
 import com.github.darksoulq.abyssallib.world.item.Item;
 import io.papermc.paper.event.player.PlayerPickBlockEvent;
+import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerLocaleChangeEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
@@ -52,7 +56,7 @@ public class PlayerEvents {
             event.setCancelled(true);
             Item item = CustomBlock.asItem(block);
             if (item == null) return;
-            ItemStack stack = item.getStack().clone();
+            ItemStack stack = item.getStack(event.getPlayer()).clone();
             HashMap<Integer, ItemStack> remaining = event.getPlayer().getInventory().addItem(stack);
             if (!remaining.isEmpty()) {
                 stack = stack.clone();
@@ -60,5 +64,11 @@ public class PlayerEvents {
                 event.getPlayer().getInventory().setItem(EquipmentSlot.HAND, stack);
             }
         }
+    }
+
+    @SubscribeEvent
+    public void onLocalChange(PlayerLocaleChangeEvent event) {
+        Player player = event.getPlayer();
+        Bukkit.getScheduler().runTask(AbyssalLib.getInstance(), player::updateInventory);
     }
 }

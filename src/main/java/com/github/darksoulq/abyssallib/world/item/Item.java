@@ -20,6 +20,7 @@ import io.papermc.paper.datacomponent.item.ItemLore;
 import io.papermc.paper.datacomponent.item.TooltipDisplay;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
@@ -28,6 +29,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
+import org.bukkit.inventory.meta.ItemMeta;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
 
@@ -71,29 +73,17 @@ public class Item implements Cloneable {
         this.nameDefinition = nameDefinition;
     }
 
-    /**
-     * Users should override this to return a built LocalizedTooltip.
-     * @return The configured tooltip builder result.
-     */
     public LocalizedTooltip createTooltip() {
-        return LocalizedTooltip.builder().build(); // Return empty default
+        return LocalizedTooltip.builder().build();
     }
 
-    /**
-     * Applies the resolved Tooltip data (lore, flags) to the Item's ComponentMap.
-     * This is internal and used during getStack().
-     */
     private void applyTooltipToComponents(LocalizedTooltip tooltip, @Nullable Player player) {
-        // 1. Resolve and set Lore
         setData(new Lore(ItemLore.lore(tooltip.resolveLines(player))));
-
-        // 2. Set Display flags
         setData(new DisplayTooltip(TooltipDisplay.tooltipDisplay()
                 .hideTooltip(tooltip.isHidden())
                 .hiddenComponents(tooltip.getHiddenComponents())
                 .build()));
 
-        // 3. Set Style
         if (tooltip.getStyle() != null) {
             setData(new TooltipStyle(tooltip.getStyle().asNamespacedKey()));
         } else {
@@ -144,53 +134,49 @@ public class Item implements Cloneable {
                 .build());
     }
 
-    public ActionResult postMine(LivingEntity source, Block target) {
-        return ActionResult.PASS;
-    }
-    public ActionResult postHit(LivingEntity source, Entity target) {
-        return ActionResult.PASS;
-    }
-    public ActionResult onUseOn(UseContext ctx) {
-        return  ActionResult.PASS;
-    }
-    public ActionResult onUse(LivingEntity source, EquipmentSlot hand, ClickType type) {
-        return ActionResult.PASS;
-    }
+    public ActionResult postMine(LivingEntity source, Block target) { return ActionResult.PASS; }
+    public ActionResult postHit(LivingEntity source, Entity target) { return ActionResult.PASS; }
+    public ActionResult onUseOn(UseContext ctx) { return ActionResult.PASS; }
+    public ActionResult onUse(LivingEntity source, EquipmentSlot hand, ClickType type) { return ActionResult.PASS; }
     public void onInventoryTick(Player player) {}
     public void onSlotChange(Player player, @Nullable Integer newSlot) {}
-    public ActionResult onClickInInventory(Player player, int slot, PlayerInventory inventory, InventoryClickType type) {
-        return ActionResult.PASS;
-    }
-    public ActionResult onDrop(Player player) {
-        return ActionResult.PASS;
-    }
-    public ActionResult onPickup(Player player) {
-        return ActionResult.PASS;
-    }
-    public ActionResult onSwapHand(Player player, EquipmentSlot current) {
-        return ActionResult.PASS;
-    }
-    public ActionResult onAnvilPrepare(AnvilContext ctx) {
-        return ActionResult.PASS;
-    }
+    public ActionResult onClickInInventory(Player player, int slot, PlayerInventory inventory, InventoryClickType type) { return ActionResult.PASS; }
+    public ActionResult onDrop(Player player) { return ActionResult.PASS; }
+    public ActionResult onPickup(Player player) { return ActionResult.PASS; }
+    public ActionResult onSwapHand(Player player, EquipmentSlot current) { return ActionResult.PASS; }
+    public ActionResult onAnvilPrepare(AnvilContext ctx) { return ActionResult.PASS; }
     public void onCraftedBy(Player player) {}
 
     public Identifier getId() {
         return id;
     }
-    public ItemStack getStack() { return stack; }
+    @ApiStatus.Internal
+    public ItemStack getRawStack() {
+        return this.stack;
+    }
+
     public ItemStack getStack(@Nullable Player player) {
         Item contextItem = this.clone();
 
-        Component resolvedName = nameDefinition.resolve(player);
-        contextItem.stack.setData(DataComponentTypes.ITEM_NAME, resolvedName);
-
         contextItem.tooltipDefinition = contextItem.createTooltip();
         contextItem.applyTooltipToComponents(contextItem.tooltipDefinition, player);
-
         contextItem.getComponentMap().applyData();
-        return contextItem.getStack();
+
+        Component resolvedName = nameDefinition.resolve(player);
+        if (resolvedName != null) {
+            Component nonItalicName = resolvedName.decoration(TextDecoration.ITALIC, false);
+            contextItem.stack.setData(DataComponentTypes.CUSTOM_NAME, nonItalicName);
+            contextItem.stack.resetData(DataComponentTypes.ITEM_NAME);
+            if (contextItem.stack.hasItemMeta()) {
+                ItemMeta meta = contextItem.stack.getItemMeta();
+                meta.displayName(nonItalicName);
+                contextItem.stack.setItemMeta(meta);
+            }
+        }
+
+        return contextItem.stack;
     }
+
     public ComponentMap getComponentMap() {
         return componentMap;
     }
